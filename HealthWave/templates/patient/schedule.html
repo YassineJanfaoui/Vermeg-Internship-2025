@@ -126,10 +126,6 @@
                         <h6>Sunday</h6>
                         <p class="text-muted">Emergency Only</p>
                     </div>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Emergency:</strong> For urgent medical needs, please call 911 or visit the nearest emergency room.
-                    </div>
                 </div>
             </div>
             
@@ -162,38 +158,6 @@
                 </div>
             </div>
             
-            <div class="card mt-3">
-                <div class="card-header">
-                    <h6 class="mb-0">
-                        <i class="fas fa-clipboard-list"></i>
-                        Preparation Tips
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i>
-                            Bring your insurance card and ID
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i>
-                            List current medications
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i>
-                            Prepare questions for your doctor
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i>
-                            Arrive 15 minutes early
-                        </li>
-                        <li class="mb-2">
-                            <i class="fas fa-check text-success"></i>
-                            Bring previous medical records
-                        </li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </div>
@@ -201,19 +165,16 @@
 
 {% block scripts %}
 <script>
-// Set minimum date to today
 document.addEventListener('DOMContentLoaded', function() {
     const appointmentDateInput = document.getElementById('appointment_date');
     if (appointmentDateInput) {
         const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        
-        const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
-        appointmentDateInput.min = minDateTime;
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        appointmentDateInput.min = now.toISOString().slice(0, 16);
+
+        if (!appointmentDateInput.value) {
+            appointmentDateInput.value = now.toISOString().slice(0, 16);
+        }
     }
 });
 
@@ -229,8 +190,6 @@ document.querySelector('form').addEventListener('submit', function(e) {
         alert('Please select a future date and time for your appointment.');
         return;
     }
-    
-    // Check if appointment is during business hours
     const dayOfWeek = selectedDate.getDay();
     const hour = selectedDate.getHours();
     

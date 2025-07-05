@@ -210,25 +210,27 @@ def patient_history():
 @app.route('/patient/schedule', methods=['GET', 'POST'])
 @login_required
 def schedule_appointment():
-    if not current_user.is_patient():
-        flash('Access denied. Patient privileges required.', 'error')
-        return redirect(url_for('index'))
-    
     form = AppointmentForm()
-    form.doctor_id.choices = [(d.id, f"Dr. {d.get_full_name()}") for d in User.query.filter_by(role='doctor').all()]
+    form.doctor_id.choices = [(d.id, f"Dr. {d.get_full_name()}") 
+                            for d in User.query.filter_by(role='doctor').all()]
     
     if form.validate_on_submit():
-        appointment = Appointment(
-            doctor_id=form.doctor_id.data,
-            patient_id=current_user.id,
-            appointment_date=form.appointment_date.data,
-            appointment_type=form.appointment_type.data,
-            notes=form.notes.data
-        )
-        db.session.add(appointment)
-        db.session.commit()
-        
-        flash('Appointment scheduled successfully!', 'success')
-        return redirect(url_for('patient_dashboard'))
+        try:
+            # Convert string to datetime object
+            appointment = Appointment(
+                doctor_id=form.doctor_id.data,
+                patient_id=current_user.id,
+                appointment_date=form.appointment_date.data,
+                appointment_type=form.appointment_type.data,
+                notes=form.notes.data
+            )
+            db.session.add(appointment)
+            db.session.commit()
+            flash('Appointment scheduled successfully!', 'success')
+            return redirect(url_for('patient_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Error scheduling appointment. Please try again.', 'error')
+            app.logger.error(f"Appointment error: {str(e)}")
     
     return render_template('patient/schedule.html', form=form)
