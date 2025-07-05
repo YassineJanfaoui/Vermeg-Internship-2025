@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - HealthCare Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-user-md text-primary"></i>
+                    Doctor Dashboard
+                </h2>
+                <p class="text-muted">Welcome, Dr. {{ current_user.get_full_name() }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ recent_appointments|length }}</h4>
+                            <p class="mb-0">Recent Appointments</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ recent_analyses|length }}</h4>
+                            <p class="mb-0">AI Analyses</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-brain fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    
+
+    <div class="row">
+        <!-- Recent Appointments -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt text-primary"></i>
+                        Recent Appointments
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_appointments %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for appointment in recent_appointments %}
+                                        <tr>
+                                            <td>{{ appointment.patient.get_full_name() }}</td>
+                                            <td>{{ appointment.appointment_date.strftime('%m/%d %H:%M') }}</td>
+                                            <td>{{ appointment.appointment_type.replace('_', ' ').title() }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if appointment.status == 'completed' else 'primary' if appointment.status == 'scheduled' else 'secondary' }}">
+                                                    {{ appointment.status.title() }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent appointments found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent AI Analyses -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain text-success"></i>
+                        Recent AI Analyses
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_analyses %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Type</th>
+                                        <th>Risk Level</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for analysis in recent_analyses %}
+                                        <tr>
+                                            <td>{{ analysis.patient.get_full_name() }}</td>
+                                            <td>{{ analysis.analysis_type.replace('_', ' ').title() }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if analysis.risk_level == 'low' else 'warning' if analysis.risk_level == 'medium' else 'danger' }}">
+                                                    {{ analysis.risk_level.title() }}
+                                                </span>
+                                            </td>
+                                            <td>{{ analysis.analyzed_at.strftime('%m/%d') }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent AI analyses found.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

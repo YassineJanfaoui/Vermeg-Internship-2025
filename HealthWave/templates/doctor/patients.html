@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Management - HealthCare Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-users text-primary"></i>
+                    Patient Management
+                </h2>
+                <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list"></i>
+                            Patient List
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control" placeholder="Search patients..." id="searchInput">
+                            <button class="btn btn-outline-primary" onclick="filterPatients()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if patients %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Patient ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Registration Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="patientTableBody">
+                                    {% for patient in patients %}
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ patient.id }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                                                        {{ patient.first_name[0] }}{{ patient.last_name[0] }}
+                                                    </div>
+                                                    <div>
+                                                        <strong>{{ patient.get_full_name() }}</strong><br>
+                                                        <small class="text-muted">@{{ patient.username }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>{{ patient.email }}</td>
+                                            <td>{{ patient.phone or 'N/A' }}</td>
+                                            <td>{{ patient.date_created.strftime('%m/%d/%Y') }}</td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-info" onclick="viewPatientDetails({{ patient.id }})">
+                                                        <i class="fas fa-eye"></i> View
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="viewPatientHistory({{ patient.id }})">
+                                                        <i class="fas fa-history"></i> History
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success" onclick="scheduleAppointment({{ patient.id }})">
+                                                        <i class="fas fa-calendar-plus"></i> Schedule
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No patients found</h5>
+                            <p class="text-muted">Patients will appear here once they register for the portal.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Details Modal -->
+<div class="modal fade" id="patientModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Patient Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="patientDetails">
+                <!-- Patient details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient History Modal -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Patient Medical History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="patientHistory">
+                <!-- Patient history will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const patients = {{ patients|tojson }};
+
+function viewPatientDetails(patientId) {
+    const patient = patients.find(p => p.id === patientId);
+    if (patient) {
+        document.getElementById('patientDetails').innerHTML = `
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                        ${patient.first_name[0]}${patient.last_name[0]}
+                    </div>
+                    <h5>${patient.first_name} ${patient.last_name}</h5>
+                    <p class="text-muted">@${patient.username}</p>
+                </div>
+                <div class="col-md-8">
+                    <h6>Contact Information</h6>
+                    <p><strong>Email:</strong> ${patient.email}</p>
+                    <p><strong>Phone:</strong> ${patient.phone || 'Not provided'}</p>
+                    <p><strong>Registration Date:</strong> ${new Date(patient.date_created).toLocaleDateString()}</p>
+                    
+                    <h6 class="mt-4">Quick Actions</h6>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" onclick="viewPatientHistory(${patient.id})">
+                            <i class="fas fa-history"></i> View History
+                        </button>
+                        <button class="btn btn-outline-success" onclick="scheduleAppointment(${patient.id})">
+                            <i class="fas fa-calendar-plus"></i> Schedule Appointment
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('patientModal'));
+        modal.show();
+    }
+}
+
+function viewPatientHistory(patientId) {
+    const patient = patients.find(p => p.id === patientId);
+    if (patient) {
+        document.getElementById('patientHistory').innerHTML = `
+            <div class="row">
+                <div class="col-12">
+                    <h6>Medical History for ${patient.first_name} ${patient.last_name}</h6>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Medical history and records would be displayed here. This includes past appointments, 
+                        diagnoses, treatments, and test results.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Recent Appointments</h6>
+                            <div class="list-group">
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>General Checkup</strong>
+                                        <span class="badge bg-success">Completed</span>
+                                    </div>
+                                    <small class="text-muted">March 15, 2024</small>
+                                </div>
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>Follow-up Visit</strong>
+                                        <span class="badge bg-primary">Scheduled</span>
+                                    </div>
+                                    <small class="text-muted">April 20, 2024</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6>Recent Test Results</h6>
+                            <div class="list-group">
+                                <div class="list-group-item">
+                                    <strong>Blood Test</strong><br>
+                                    <small class="text-muted">Results: Normal - March 15, 2024</small>
+                                </div>
+                                <div class="list-group-item">
+                                    <strong>X-Ray Chest</strong><br>
+                                    <small class="text-muted">Results: Clear - February 28, 2024</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+        modal.show();
+    }
+}
+
+function scheduleAppointment(patientId) {
+    const patient = patients.find(p => p.id === patientId);
+    if (patient) {
+        alert(`Schedule appointment for ${patient.first_name} ${patient.last_name}\n\nThis would redirect to the appointment scheduling page.`);
+    }
+}
+
+function filterPatients() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#patientTableBody tr');
+    
+    rows.forEach(row => {
+        const patientName = row.cells[1].textContent.toLowerCase();
+        const patientEmail = row.cells[2].textContent.toLowerCase();
+        
+        if (patientName.includes(searchTerm) || patientEmail.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// Enable search on Enter key
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        filterPatients();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Appointment - HealthCare Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-calendar-plus text-primary"></i>
+                    Schedule Appointment
+                </h2>
+                <a href="{{ url_for('patient_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Appointment Form -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-form"></i>
+                        Appointment Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.doctor_id.label(class="form-label") }}
+                                {{ form.doctor_id(class="form-control") }}
+                                {% if form.doctor_id.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.doctor_id.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.appointment_type.label(class="form-label") }}
+                                {{ form.appointment_type(class="form-control") }}
+                                {% if form.appointment_type.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.appointment_type.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.appointment_date.label(class="form-label") }}
+                            {{ form.appointment_date(class="form-control", type="datetime-local") }}
+                            {% if form.appointment_date.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.appointment_date.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted">Please select a date and time for your appointment</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.notes.label(class="form-label") }}
+                            {{ form.notes(class="form-control", rows="4", placeholder="Please describe your symptoms, concerns, or reason for this appointment...") }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.notes.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Please Note:</strong> Appointments are subject to doctor availability. You will receive a confirmation email once your appointment is confirmed.
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-grid gap-2">
+                                    {{ form.submit(class="btn btn-primary btn-lg") }}
+                                    <a href="{{ url_for('patient_dashboard') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appointment Guidelines -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clock"></i>
+                        Available Hours
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Monday - Friday</h6>
+                        <p class="text-muted">8:00 AM - 6:00 PM</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Saturday</h6>
+                        <p class="text-muted">9:00 AM - 2:00 PM</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>Sunday</h6>
+                        <p class="text-muted">Emergency Only</p>
+                    </div>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Emergency:</strong> For urgent medical needs, please call 911 or visit the nearest emergency room.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-list-check"></i>
+                        Appointment Types
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="appointment-types">
+                        <div class="mb-3">
+                            <h6 class="text-primary">Consultation</h6>
+                            <p class="text-muted small">Initial visit for new health concerns or second opinions</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-success">Follow-up</h6>
+                            <p class="text-muted small">Continuing care for existing conditions or treatment monitoring</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-info">Check-up</h6>
+                            <p class="text-muted small">Routine preventive care and health maintenance</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-danger">Emergency</h6>
+                            <p class="text-muted small">Urgent medical attention required</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-clipboard-list"></i>
+                        Preparation Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Bring your insurance card and ID
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            List current medications
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Prepare questions for your doctor
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Arrive 15 minutes early
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success"></i>
+                            Bring previous medical records
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const appointmentDateInput = document.getElementById('appointment_date');
+    if (appointmentDateInput) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+        appointmentDateInput.min = minDateTime;
+    }
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const appointmentDate = document.getElementById('appointment_date').value;
+    const selectedDate = new Date(appointmentDate);
+    const now = new Date();
+    
+    // Check if appointment is in the past
+    if (selectedDate < now) {
+        e.preventDefault();
+        alert('Please select a future date and time for your appointment.');
+        return;
+    }
+    
+    // Check if appointment is during business hours
+    const dayOfWeek = selectedDate.getDay();
+    const hour = selectedDate.getHours();
+    
+    if (dayOfWeek === 0 && hour < 8) { // Sunday emergency only
+        const confirmEmergency = confirm('Sunday appointments are for emergencies only. Is this an emergency?');
+        if (!confirmEmergency) {
+            e.preventDefault();
+            return;
+        }
+    }
+    
+    if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday-Friday
+        if (hour < 8 || hour >= 18) {
+            e.preventDefault();
+            alert('Please select a time between 8:00 AM and 6:00 PM for weekday appointments.');
+            return;
+        }
+    }
+    
+    if (dayOfWeek === 6) { // Saturday
+        if (hour < 9 || hour >= 14) {
+            e.preventDefault();
+            alert('Please select a time between 9:00 AM and 2:00 PM for Saturday appointments.');
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}AI Analysis - HealthCare Portal{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-brain text-primary"></i>
+                    AI Medical Analysis
+                </h2>
+                <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Analysis Form -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-upload"></i>
+                        New Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            {{ form.patient_id.label(class="form-label") }}
+                            {{ form.patient_id(class="form-control") }}
+                            {% if form.patient_id.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.patient_id.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.analysis_type.label(class="form-label") }}
+                            {{ form.analysis_type(class="form-control") }}
+                            {% if form.analysis_type.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.analysis_type.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            {{ form.image_file.label(class="form-label") }}
+                            {{ form.image_file(class="form-control") }}
+                            {% if form.image_file.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.image_file.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- AI Models Info -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Available AI Models</h6>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <strong>Cancer Detection:</strong> Advanced CNN model for detecting malignant tissues
+                        </div>
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <strong>X-Ray Analysis:</strong> Chest X-ray abnormality detection
+                        </div>
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <strong>MRI Scan:</strong> Brain and organ analysis
+                        </div>
+                        <div class="mb-2">
+                            <i class="fas fa-check-circle text-success"></i>
+                            <strong>CT Scan:</strong> Comprehensive body scan analysis
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Results -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i>
+                        Recent Analysis Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if analyses %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Analysis Type</th>
+                                        <th>Result</th>
+                                        <th>Risk Level</th>
+                                        <th>Confidence</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for analysis in analyses %}
+                                        <tr>
+                                            <td>{{ analysis.patient.get_full_name() }}</td>
+                                            <td>{{ analysis.analysis_type.replace('_', ' ').title() }}</td>
+                                            <td>
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;" title="{{ analysis.result }}">
+                                                    {{ analysis.result }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if analysis.risk_level == 'low' else 'warning' if analysis.risk_level == 'medium' else 'danger' }}">
+                                                    {{ analysis.risk_level.title() }}
+                                                </span>
+                                            </td>
+                                           {% if analysis.risk_level == 'high' %}
+                                            <td class="text-danger">{{ "%.1f"|format(analysis.confidence_score * 100) }}%</td>
+                                            {% else %}
+                                            <td class="text-success">{{ "%.1f"|format((1 - analysis.confidence_score) * 100) }}%</td>
+                                            {% endif %}
+                                            <td>{{ analysis.analyzed_at.strftime('%m/%d/%Y') }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No analyses found</h5>
+                            <p class="text-muted">Upload a medical image to start your first AI analysis.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Details Modal -->
+<div class="modal fade" id="analysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Analysis Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analysisDetails">
+                <!-- Analysis details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAnalysisDetails(analysisId) {
+    // In a real application, this would fetch details from the server
+    // For now, we'll show a placeholder
+    const analysis = analyses.find(a => a.id === analysisId);
+    
+    if (analysis) {
+        document.getElementById('analysisDetails').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Patient Information</h6>
+                    <p><strong>Name:</strong> ${analysis.patient.first_name} ${analysis.patient.last_name}</p>
+                    <p><strong>Analysis Type:</strong> ${analysis.analysis_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                    <p><strong>Date:</strong> ${new Date(analysis.analyzed_at).toLocaleDateString()}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>AI Analysis Results</h6>
+                    <p><strong>Result:</strong> ${analysis.result}</p>
+                    <p><strong>Confidence Score:</strong> ${(analysis.confidence_score * 100).toFixed(1)}%</p>
+                    <p><strong>Risk Level:</strong> <span class="badge bg-${analysis.risk_level === 'low' ? 'success' : analysis.risk_level === 'medium' ? 'warning' : 'danger'}">${analysis.risk_level.toUpperCase()}</span></p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <h6>Recommendations</h6>
+                    <p>${analysis.recommendations}</p>
+                </div>
+            </div>
+        `;
+        
+        const modal = new bootstrap.Modal(document.getElementById('analysisModal'));
+        modal.show();
+    }
+}
+</script>
+{% endblock %}

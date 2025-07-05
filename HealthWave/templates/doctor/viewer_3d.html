@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}3D Medical Viewer - HealthCare Portal{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-cube text-primary"></i>
+                    3D Medical Image Viewer
+                </h2>
+                <a href="{{ url_for('doctor_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 3D Viewer -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-eye"></i>
+                        3D Visualization
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="viewer3d" style="height: 600px; background: #f8f9fa;"></div>
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted">Use mouse to rotate, zoom, and pan</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="resetView()">
+                                <i class="fas fa-sync"></i> Reset View
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="toggleWireframe()">
+                                <i class="fas fa-project-diagram"></i> Wireframe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-sliders-h"></i>
+                        Viewer Controls
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Sample Models</label>
+                        <select class="form-select" id="modelSelect" onchange="loadModel(this.value)">
+                            <option value="brain">Brain Model</option>
+                            <option value="heart">Heart Model</option>
+                            <option value="lung">Lung Model</option>
+                            <option value="bone">Bone Structure</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Opacity</label>
+                        <input type="range" class="form-range" min="0.1" max="1" step="0.1" value="1" id="opacitySlider" oninput="updateOpacity(this.value)">
+                        <small class="text-muted">Current: <span id="opacityValue">100%</span></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Rotation Speed</label>
+                        <input type="range" class="form-range" min="0" max="5" step="0.5" value="0" id="rotationSlider" oninput="updateRotation(this.value)">
+                        <small class="text-muted">Auto-rotate: <span id="rotationValue">Off</span></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Color Scheme</label>
+                        <select class="form-select" id="colorScheme" onchange="updateColorScheme(this.value)">
+                            <option value="default">Default</option>
+                            <option value="medical">Medical Blue</option>
+                            <option value="anatomy">Anatomy Colors</option>
+                            <option value="grayscale">Grayscale</option>
+                        </select>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <h6>Measurements</h6>
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <button class="btn btn-outline-info btn-sm" onclick="enableMeasurement()">
+                                <i class="fas fa-ruler"></i> Measure Distance
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="enableAnnotation()">
+                                <i class="fas fa-sticky-note"></i> Add Annotation
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Export Options</h6>
+                        <div class="btn-group-vertical d-grid gap-2">
+                            <button class="btn btn-outline-success btn-sm" onclick="exportScreenshot()">
+                                <i class="fas fa-camera"></i> Screenshot
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="exportModel()">
+                                <i class="fas fa-download"></i> Export Model
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Information Panel -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Model Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="modelInfo">
+                        <p><strong>Current Model:</strong> <span id="currentModel">Brain Model</span></p>
+                        <p><strong>Vertices:</strong> <span id="vertexCount">8,432</span></p>
+                        <p><strong>Faces:</strong> <span id="faceCount">16,864</span></p>
+                        <p><strong>File Size:</strong> <span id="fileSize">2.3 MB</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/3d-viewer.js') }}"></script>
+<script>
+// Initialize the 3D viewer when the page loads
+document.addEventListener('DOMContentLoaded', function() {
+    init3DViewer();
+});
+
+// Model loading functions
+function loadModel(modelType) {
+    const models = {
+        'brain': { name: 'Brain Model', vertices: 8432, faces: 16864, size: '2.3 MB' },
+        'heart': { name: 'Heart Model', vertices: 12543, faces: 25086, size: '3.1 MB' },
+        'lung': { name: 'Lung Model', vertices: 6721, faces: 13442, size: '1.8 MB' },
+        'bone': { name: 'Bone Structure', vertices: 15632, faces: 31264, size: '4.2 MB' }
+    };
+    
+    const model = models[modelType];
+    document.getElementById('currentModel').textContent = model.name;
+    document.getElementById('vertexCount').textContent = model.vertices.toLocaleString();
+    document.getElementById('faceCount').textContent = model.faces.toLocaleString();
+    document.getElementById('fileSize').textContent = model.size;
+    
+    // Update 3D viewer with new model
+    loadNewModel(modelType);
+}
+
+function updateOpacity(value) {
+    document.getElementById('opacityValue').textContent = Math.round(value * 100) + '%';
+    setModelOpacity(value);
+}
+
+function updateRotation(value) {
+    document.getElementById('rotationValue').textContent = value == 0 ? 'Off' : value + 'x';
+    setAutoRotation(value);
+}
+
+function updateColorScheme(scheme) {
+    setColorScheme(scheme);
+}
+
+function enableMeasurement() {
+    alert('Measurement tool activated. Click two points on the model to measure distance.');
+}
+
+function enableAnnotation() {
+    alert('Annotation tool activated. Click on the model to add notes.');
+}
+
+function exportScreenshot() {
+    captureScreenshot();
+}
+
+function exportModel() {
+    alert('Model export feature - would download the current 3D model.');
+}
+</script>
+{% endblock %}
