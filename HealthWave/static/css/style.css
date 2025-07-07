@@ -246,10 +246,10 @@ body {
 }
 
 .message-bubble {
-    max-width: 80%;
+    max-width: 100%;
     border-radius: 1rem;
     padding: 1rem;
-    word-wrap: break-word;
+    word-wrap: overflow-wrap;
 }
 
 .bot-message .message-bubble {

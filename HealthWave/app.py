@@ -2,7 +2,7 @@ import os
 import logging
 from flask import Flask
 from extensions import db, login_manager
-from services import cancer_service
+from services import cancer_service, chatbot_service
 from werkzeug.middleware.proxy_fix import ProxyFix
 import sqlalchemy
 from sqlalchemy import exc
@@ -60,6 +60,5 @@ with app.app_context():
         app.logger.error("Failed to connect to database after multiple attempts")
     import models
     db.create_all()
-    
-    # Import routes
-    import routes
+
+import routes

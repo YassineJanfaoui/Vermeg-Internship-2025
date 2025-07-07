@@ -4,6 +4,8 @@ from PIL import Image
 import os
 import io
 from werkzeug.utils import secure_filename
+import requests as rq
+import ollama
 
 class CancerAnalysisService:
     def __init__(self, app=None):
@@ -38,7 +40,6 @@ class CancerAnalysisService:
             img = Image.open(temp_path)
             image_type = self._detect_image_type(img, filename)
             
-            # Get analysis results
             result = self._analyze_with_model(img, image_type)
             
             # Clean up
@@ -125,5 +126,20 @@ class CancerAnalysisService:
             'risk_level': risk_level,
             'recommendations': recommendations
         }
+class ChatbotService:
+    def __init__(self):
+        self.responses = {
+        }
 
+    def get_response(self, message):
+        message = message.lower()
+        response = ollama.chat(
+            model="medllama2:7b",
+            messages=[
+                {"role": "user", "content": message}
+            ]
+        )
+        return response['message']['content']
+    
 cancer_service = CancerAnalysisService()
+chatbot_service = ChatbotService()

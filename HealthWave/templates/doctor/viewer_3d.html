@@ -149,12 +149,10 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/3d-viewer.js') }}"></script>
 <script>
-// Initialize the 3D viewer when the page loads
 document.addEventListener('DOMContentLoaded', function() {
     init3DViewer();
 });
 
-// Model loading functions
 function loadModel(modelType) {
     const models = {
         'brain': { name: 'Brain Model', vertices: 8432, faces: 16864, size: '2.3 MB' },
@@ -169,7 +167,6 @@ function loadModel(modelType) {
     document.getElementById('faceCount').textContent = model.faces.toLocaleString();
     document.getElementById('fileSize').textContent = model.size;
     
-    // Update 3D viewer with new model
     loadNewModel(modelType);
 }
 

@@ -1,12 +1,8 @@
-import os
-import json
-import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from flask import render_template, flash, redirect, url_for, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from werkzeug.utils import secure_filename
 from extensions import db
-from services import cancer_service
+from services import cancer_service, chatbot_service
 from models import User, Appointment, MedicalRecord, AIAnalysis
 from forms import LoginForm, RegistrationForm, AppointmentForm, AIAnalysisForm, ChatbotForm
 from app import app
@@ -62,8 +58,7 @@ def register():
         user.set_password(form.password.data)
         db.session.add(user)
         db.session.commit()
-        
-        flash('Registration successful! Please log in.', 'success')
+        login_user(user)
         return redirect(url_for('index'))
     
     print(f"Form errors: {form.errors}")  
@@ -138,10 +133,10 @@ def chatbot():
     
     form = ChatbotForm()
     response = None
-    
     if form.validate_on_submit():
         message = form.message.data.lower()
-    
+        form.message.data = '' 
+        response = chatbot_service.get_response(message) if form.is_submitted() else None
     return render_template('doctor/chatbot.html', form=form, response=response)
 
 @app.route('/doctor/3d-viewer')

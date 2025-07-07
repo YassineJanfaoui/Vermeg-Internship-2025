@@ -1,5 +1,5 @@
 import os
-import tensorflow as tf
+import tensorflow
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
@@ -11,8 +11,8 @@ base_dir = '../Data/train'
 brain_dir = os.path.join(base_dir, 'brain')
 lung_dir = os.path.join(base_dir, 'lung')
 
-img_size = (128,128)  # Reduced from 224x224
-batch_size = 4  # Small batch size
+img_size = (128,128) 
+batch_size = 8
 
 train_datagen = ImageDataGenerator(
     rescale=1./255,
@@ -57,7 +57,6 @@ lung_val_gen = train_datagen.flow_from_directory(
     class_mode='categorical',
     subset='validation'
 )
-
 
 brain_model = Sequential([
     Conv2D(16, (3, 3), activation='relu', input_shape=(128, 128, 3)),
