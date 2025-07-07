@@ -133,10 +133,12 @@ def chatbot():
     
     form = ChatbotForm()
     response = None
-    if form.validate_on_submit():
-        message = form.message.data.lower()
-        form.message.data = '' 
-        response = chatbot_service.get_response(message) if form.is_submitted() else None
+    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        message = request.form.get('message')
+        if message:
+            response = chatbot_service.get_response(message)
+            return jsonify({'response': response})
+        return jsonify({'error': 'Empty message'}), 400
     return render_template('doctor/chatbot.html', form=form, response=response)
 
 @app.route('/doctor/3d-viewer')

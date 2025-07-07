@@ -103,17 +103,56 @@
 
 {% block scripts %}
 <script>
-function askQuestion(question) {
-    document.getElementById('message').value = question;
-    document.querySelector('.chat-form').submit();
-}
 var messageInput = document.getElementsByClassName('form-control')[0];
-messageInput.addEventListener('keydown', function(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault(); 
-        document.querySelector('.chat-form').submit();
-    }
-});
+var chatform = document.querySelector('.chat-form');
+chatform.addEventListener('submit', function(event) {
+    event.preventDefault(); 
+    var message = messageInput.value.trim();
+    chatContainer.innerHTML += `
+                    <div class="chat-message user-message mb-3">
+                        <div class="d-flex justify-content-end">
+                            <div class="message-content">
+                                <div class="message-bubble bg-primary text-white p-3 rounded">
+                                    <p class="mb-0">${message}</p>
+                                </div>
+                                <small class="text-muted">You</small>
+                            </div>
+                            <div class="avatar bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center ms-3" style="width: 40px; height: 40px;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div> `;
+    if (message) {
+        
+        fetch('{{ url_for("chatbot") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({ 'message': message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.response) {
+                var chatContainer = document.querySelector('.chat-container');
+                
+                chatContainer.innerHTML += `
+                    <div class="chat-message bot-message mb-3">
+                        <div class="d-flex">
+                            <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-bubble bg-light p-3 rounded">
+                                    <p class="mb-0">${data.response}</p>
+                                </div>
+                                <small class="text-muted">AI Assistant</small>
+                            </div>
+                        </div>
+                    </div>`;
+                messageInput.value = '';
+            }
+        })}});
 document.addEventListener('DOMContentLoaded', function() {
     const chatContainer = document.querySelector('.chat-container');
     chatContainer.scrollTop = chatContainer.scrollHeight;
