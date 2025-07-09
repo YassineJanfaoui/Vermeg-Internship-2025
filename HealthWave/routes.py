@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import render_template, flash, redirect, url_for, request, jsonify
+from flask import render_template, flash, redirect, url_for, request, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db
 from services import cancer_service, chatbot_service
@@ -128,18 +128,74 @@ def ai_analysis():
 @login_required
 def chatbot():
     if not current_user.is_doctor():
-        flash('Access denied. Doctor privileges required.', 'error')
-        return redirect(url_for('index'))
+        return jsonify({'error': 'Access denied'}), 403
     
-    form = ChatbotForm()
-    response = None
     if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        message = request.form.get('message')
-        if message:
-            response = chatbot_service.get_response(message)
-            return jsonify({'response': response})
-        return jsonify({'error': 'Empty message'}), 400
-    return render_template('doctor/chatbot.html', form=form, response=response)
+        try:
+            message = request.form.get('message')
+            file = request.files.get('file')
+            
+            if not message and not file:
+                return jsonify({'error': 'No message or file provided'}), 400
+            
+            # Save user message to database
+            if message:
+                chatbot_service.save_conversation(
+                    user_id=current_user.id,
+                    role='user',
+                    content=message
+                )
+            
+            if file:
+                chatbot_service.save_conversation(
+                    user_id=current_user.id,
+                    role='user',
+                    content=file.filename,
+                    is_file=True,
+                    file_name=file.filename
+                )
+            
+            # Get conversation history from database
+            history = chatbot_service.get_conversation_history(current_user.id)
+            formatted_history = [{
+                'role': msg.role,
+                'content': msg.content,
+                'is_file': msg.is_file
+            } for msg in reversed(history)]  # Reverse to get chronological order
+            
+            # Get response from chatbot
+            response = chatbot_service.get_response(formatted_history, file)
+            
+            # Save assistant response to database
+            chatbot_service.save_conversation(
+                user_id=current_user.id,
+                role='assistant',
+                content=response
+            )
+            
+            return jsonify({
+                'response': response,
+                'conversation': formatted_history + [{
+                    'role': 'assistant',
+                    'content': response
+                }]
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Chatbot error: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
+    # For GET requests - load conversation history
+    history = chatbot_service.get_conversation_history(current_user.id)
+    formatted_history = [{
+        'role': msg.role,
+        'content': msg.content,
+        'is_file': msg.is_file
+    } for msg in reversed(history)]
+    
+    return render_template('doctor/chatbot.html', 
+                         form=ChatbotForm(),
+                         conversation=formatted_history)
 
 @app.route('/doctor/3d-viewer')
 @login_required

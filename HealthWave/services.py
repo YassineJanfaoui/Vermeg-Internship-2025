@@ -128,18 +128,85 @@ class CancerAnalysisService:
         }
 class ChatbotService:
     def __init__(self):
-        self.responses = {
-        }
+        self.uploads_dir = os.path.join(os.path.dirname(__file__), 'uploads')
+        os.makedirs(self.uploads_dir, exist_ok=True)
 
-    def get_response(self, message):
-        message = message.lower()
+    def get_response(self, conversation_history, file=None):
+        if file:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(self.uploads_dir, filename)
+            file.save(filepath)
+            
+            try:
+                text_content = self._extract_text_from_file(filepath)
+                conversation_history[-1]['content'] += f"\n[Attached file content]:\n{text_content}"
+            except Exception as e:
+                raise ValueError(f"Could not process file: {str(e)}")
+            finally:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+        
         response = ollama.chat(
             model="medllama2:7b",
-            messages=[
-                {"role": "user", "content": message}
-            ]
+            messages=conversation_history
         )
         return response['message']['content']
+    
+    def _extract_text_from_file(self, filepath):
+        _, ext = os.path.splitext(filepath)
+        ext = ext.lower()
+        
+        if ext == '.pdf':
+            return self._extract_text_from_pdf(filepath)
+        elif ext in ('.doc', '.docx'):
+            return self._extract_text_from_word(filepath)
+        elif ext == '.txt':
+            with open(filepath, 'r') as f:
+                return f.read()
+        else:
+            raise ValueError("Unsupported file type")
+
+    def _extract_text_from_pdf(self, filepath):
+        try:
+            import PyPDF2
+            with open(filepath, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                text = "\n".join([page.extract_text() for page in reader.pages])
+                return text
+        except ImportError:
+            raise ValueError("PDF processing requires PyPDF2 package")
+
+    def _extract_text_from_word(self, filepath):
+        try:
+            from docx import Document
+            doc = Document(filepath)
+            return "\n".join([para.text for para in doc.paragraphs])
+        except ImportError:
+            raise ValueError("Word processing requires python-docx package")
+        
+    def save_conversation(self, user_id, role, content, is_file=False, file_name=None):
+        from models import ChatConversation, db
+        try:
+            message = ChatConversation(
+                user_id=user_id,
+                role=role,
+                content=content,
+                is_file=is_file,
+                file_name=file_name
+            )
+            db.session.add(message)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise e
+    
+    def get_conversation_history(self, user_id, limit=20):
+        from models import ChatConversation
+        return ChatConversation.query.filter_by(user_id=user_id)\
+                                   .order_by(ChatConversation.created_at.desc())\
+                                   .limit(limit)\
+                                   .all()
     
 cancer_service = CancerAnalysisService()
 chatbot_service = ChatbotService()

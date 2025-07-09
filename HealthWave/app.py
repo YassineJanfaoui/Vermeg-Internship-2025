@@ -1,11 +1,13 @@
 import os
 import logging
 from flask import Flask
+from flask_migrate import Migrate
 from extensions import db, login_manager
 from services import cancer_service, chatbot_service
 from werkzeug.middleware.proxy_fix import ProxyFix
 import sqlalchemy
 from sqlalchemy import exc
+import time
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -47,7 +49,7 @@ cancer_service.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
-
+migrate = Migrate(app, db)
    
 
 @login_manager.user_loader

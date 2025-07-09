@@ -433,3 +433,8 @@ footer {
         border: 1px solid #ddd !important;
     }
 }
+.file-upload:hover{
+    background-color: #8bc5ff;
+    transition: background-color 0.3s ease;
+    cursor: pointer;
+}

@@ -49,7 +49,12 @@ class User(UserMixin, db.Model):
         backref='analysis_doctor',
         lazy='dynamic'
     )
-    
+    chat_conversations = db.relationship(
+        'ChatConversation',
+        backref='chat_user',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
     
@@ -106,3 +111,17 @@ class AIAnalysis(db.Model):
     doctor = db.relationship('User', foreign_keys=[analyzed_by], backref='analyses_as_doctor')
     def __repr__(self):
         return f'<AIAnalysis {self.id}: {self.analysis_type}>'
+    
+class ChatConversation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    is_file = db.Column(db.Boolean, default=False)
+    file_name = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='chat_conversations')
+    
+    def __repr__(self):
+        return f'<ChatConversation {self.id}: {self.role}>'
