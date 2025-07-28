@@ -106,7 +106,7 @@ class AIAnalysis(db.Model):
     risk_level = db.Column(db.String(20))  # low, medium, high
     recommendations = db.Column(db.Text)
     analyzed_at = db.Column(db.DateTime, default=datetime.utcnow)
-    analyzed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # doctor who requested analysis
+    analyzed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  
     patient = db.relationship('User', foreign_keys=[patient_id], backref='analyses_as_patient')
     doctor = db.relationship('User', foreign_keys=[analyzed_by], backref='analyses_as_doctor')
     def __repr__(self):
@@ -115,13 +115,13 @@ class AIAnalysis(db.Model):
 class ChatConversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    role = db.Column(db.String(20), nullable=False)  
     content = db.Column(db.Text, nullable=False)
     is_file = db.Column(db.Boolean, default=False)
     file_name = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref='chat_conversations')
+    user = db.relationship('User', backref='ChatConversation')
     
     def __repr__(self):
         return f'<ChatConversation {self.id}: {self.role}>'

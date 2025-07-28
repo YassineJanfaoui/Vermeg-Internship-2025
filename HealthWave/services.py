@@ -1,8 +1,11 @@
 from tensorflow.keras.models import load_model
 import numpy as np
 from PIL import Image
+import fitz 
 import os
 import io
+from models import ChatConversation
+from extensions import db
 from werkzeug.utils import secure_filename
 import requests as rq
 import ollama
@@ -114,99 +117,109 @@ class CancerAnalysisService:
                      'medium' if confidence > 0.5 else
                      'low')
         
-        recommendations = (
-            f'Immediate {specialist} consultation' if risk_level == 'high' else
-            'Follow-up imaging recommended' if risk_level == 'medium' else
-            'Continue regular screening'
-        )
-        
         return {
             'result': result,
             'confidence': confidence,
-            'risk_level': risk_level,
-            'recommendations': recommendations
+            'risk_level': risk_level
         }
 class ChatbotService:
     def __init__(self):
         self.uploads_dir = os.path.join(os.path.dirname(__file__), 'uploads')
         os.makedirs(self.uploads_dir, exist_ok=True)
 
-    def get_response(self, conversation_history, file=None):
-        if file:
+    def extract_file(self, file):
+        if file and file.filename:
             filename = secure_filename(file.filename)
-            filepath = os.path.join(self.uploads_dir, filename)
-            file.save(filepath)
-            
-            try:
-                text_content = self._extract_text_from_file(filepath)
-                conversation_history[-1]['content'] += f"\n[Attached file content]:\n{text_content}"
-            except Exception as e:
-                raise ValueError(f"Could not process file: {str(e)}")
-            finally:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-        
-        response = ollama.chat(
-            model="medllama2:7b",
-            messages=conversation_history
-        )
-        return response['message']['content']
+            file_path = os.path.join(self.uploads_dir, filename)
+            file.save(file_path)
+            return file_path
+        return None
     
-    def _extract_text_from_file(self, filepath):
-        _, ext = os.path.splitext(filepath)
-        ext = ext.lower()
-        
-        if ext == '.pdf':
-            return self._extract_text_from_pdf(filepath)
-        elif ext in ('.doc', '.docx'):
-            return self._extract_text_from_word(filepath)
-        elif ext == '.txt':
-            with open(filepath, 'r') as f:
-                return f.read()
-        else:
-            raise ValueError("Unsupported file type")
-
-    def _extract_text_from_pdf(self, filepath):
+    def extract_text_from_pdf(self, file_path):
         try:
-            import PyPDF2
-            with open(filepath, 'rb') as f:
-                reader = PyPDF2.PdfReader(f)
-                text = "\n".join([page.extract_text() for page in reader.pages])
-                return text
-        except ImportError:
-            raise ValueError("PDF processing requires PyPDF2 package")
-
-    def _extract_text_from_word(self, filepath):
-        try:
-            from docx import Document
-            doc = Document(filepath)
-            return "\n".join([para.text for para in doc.paragraphs])
-        except ImportError:
-            raise ValueError("Word processing requires python-docx package")
-        
-    def save_conversation(self, user_id, role, content, is_file=False, file_name=None):
-        from models import ChatConversation, db
-        try:
-            message = ChatConversation(
-                user_id=user_id,
-                role=role,
-                content=content,
-                is_file=is_file,
-                file_name=file_name
-            )
-            db.session.add(message)
-            db.session.commit()
-            return True
+            doc = fitz.open(file_path)
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            return text
         except Exception as e:
-            db.session.rollback()
-            raise e
+            return None
     
-    def get_conversation_history(self, user_id, limit=20):
-        from models import ChatConversation
-        return ChatConversation.query.filter_by(user_id=user_id)\
-                                   .order_by(ChatConversation.created_at.desc())\
-                                   .limit(limit)\
-                                   .all()
+    def fetch_history(self, user_id):
+        conversations = ChatConversation.query.filter_by(user_id=user_id).order_by(ChatConversation.created_at.desc()).all()
+        return [{'role': conv.role, 'content': conv.content, 'is_file': conv.is_file, 'file_name': conv.file_name} for conv in conversations]
+
+    def get_file_content(self, file_path):
+        if file_path and os.path.exists(file_path):
+            with open(file_path, 'rb') as f:
+                return f.read()
+        return None
+    
+    def get_response(self, user_message, user_id, role='user',is_file=False, file_name=None):
+        messages= [{'role': 'system', 'content': 'You are a helpful medical assistant.'}]
+        if is_file and file_name:
+            filename = file_name.filename  # extract the name
+            file_path = self.extract_file(file_name)
+            if not file_path:
+                return "File upload failed."
+
+            if filename.lower().endswith('.pdf'):
+                content = self.extract_text_from_pdf(file_path)
+                #write the content to a file
+                if content is None:
+                    return "Failed to extract text from PDF."  
+                with open(os.path.join(self.uploads_dir, filename), 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+            else:
+                raw = self.get_file_content(file_path)
+                content = raw.decode('utf-8') if raw else None
+
+            if not content:
+                return "Failed to read or extract content from the file."
+
+            messages.append({
+                'role': role,
+                'content': content,
+                'is_file': True,
+                'file_name': filename
+            })
+
+            self.save_conversation(user_id, role, content, is_file=True, file_name=filename)
+        else:
+            self.save_conversation(user_id, role, user_message)
+            messages.append({
+                'role': role,
+                'content': user_message,
+                'is_file': False
+            })
+        try:
+            messages = [{'role': msg['role'], 'content': msg['content']} for msg in messages]
+            response = ollama.chat(
+                    model="monotykamary/medichat-llama3:8b",
+                    messages= messages,
+                    stream=False
+                )
+            assistant_message = response['message']['content']
+
+            self.save_conversation(user_id, 'assistant', assistant_message)
+            
+            return assistant_message
+        
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def save_conversation(self, user_id, role, content, is_file=False, file_name=None):
+        conversation = ChatConversation(
+            user_id=user_id,
+            role=role,
+            content=content,
+            is_file=is_file,
+            file_name=file_name
+        )
+        db.session.add(conversation)
+        db.session.commit()
+        return conversation
     
 cancer_service = CancerAnalysisService()
 chatbot_service = ChatbotService()

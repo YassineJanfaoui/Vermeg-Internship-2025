@@ -124,79 +124,44 @@ def ai_analysis():
                              .limit(10).all()
     return render_template('doctor/ai_analysis.html', form=form, analyses=analyses)
 
-@app.route('/doctor/chatbot', methods=['GET', 'POST'])
+@app.route('/doctor/chatbot', methods=['GET'])
 @login_required
 def chatbot():
     if not current_user.is_doctor():
+        flash('Access denied. Doctor privileges required.', 'error')
+        return redirect(url_for('index'))
+    
+    form = ChatbotForm()
+    chat_history = chatbot_service.fetch_history(current_user.id)[::-1]
+    return render_template('doctor/chatbot.html', form=form, chat_history=chat_history)
+
+@app.route('/api/chatbot', methods=['POST'])
+@login_required
+def chatbot_api():
+    if not current_user.is_doctor():
         return jsonify({'error': 'Access denied'}), 403
     
-    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        try:
-            message = request.form.get('message')
-            file = request.files.get('file')
-            
-            if not message and not file:
-                return jsonify({'error': 'No message or file provided'}), 400
-            
-            # Save user message to database
-            if message:
-                chatbot_service.save_conversation(
-                    user_id=current_user.id,
-                    role='user',
-                    content=message
-                )
-            
-            if file:
-                chatbot_service.save_conversation(
-                    user_id=current_user.id,
-                    role='user',
-                    content=file.filename,
-                    is_file=True,
-                    file_name=file.filename
-                )
-            
-            # Get conversation history from database
-            history = chatbot_service.get_conversation_history(current_user.id)
-            formatted_history = [{
-                'role': msg.role,
-                'content': msg.content,
-                'is_file': msg.is_file
-            } for msg in reversed(history)]  # Reverse to get chronological order
-            
-            # Get response from chatbot
-            response = chatbot_service.get_response(formatted_history, file)
-            
-            # Save assistant response to database
-            chatbot_service.save_conversation(
-                user_id=current_user.id,
-                role='assistant',
-                content=response
-            )
-            
-            return jsonify({
-                'response': response,
-                'conversation': formatted_history + [{
-                    'role': 'assistant',
-                    'content': response
-                }]
-            })
-            
-        except Exception as e:
-            app.logger.error(f"Chatbot error: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+    try:
+        message = request.form.get('message')
+        file = request.files.get('file')
+        
+        if not message and not file:
+            return jsonify({'error': 'No message or file provided'}), 400
+        
+        response = chatbot_service.get_response(
+            user_message=message,
+            user_id=current_user.id,
+            role='user',
+            is_file=file is not None,
+            file_name=file
+        )
+        
+        return jsonify({'response': response})
     
-    # For GET requests - load conversation history
-    history = chatbot_service.get_conversation_history(current_user.id)
-    formatted_history = [{
-        'role': msg.role,
-        'content': msg.content,
-        'is_file': msg.is_file
-    } for msg in reversed(history)]
+    except Exception as e:
+        app.logger.error(f"Error in chatbot route: {str(e)}")
+        return jsonify({'error': str(e)}), 500
     
-    return render_template('doctor/chatbot.html', 
-                         form=ChatbotForm(),
-                         conversation=formatted_history)
-
 @app.route('/doctor/3d-viewer')
 @login_required
 def viewer_3d():

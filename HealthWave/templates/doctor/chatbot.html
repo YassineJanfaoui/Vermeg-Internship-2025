@@ -31,26 +31,35 @@
                     <!-- Chat Messages -->
                     <div id="chat-container" class="chat-container mb-4"
                         style="height: 400px; overflow-y: auto; border: 1px solid #e9ecef; padding: 15px; border-radius: 0.375rem;">
-                        <div class="chat-message bot-message mb-3">
-                            <div class="d-flex">
-                                <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
-                                    style="width: 40px; height: 40px;">
-                                    <i class="fas fa-robot"></i>
-                                </div>
-                                <div class="message-content">
-                                    <div class="message-bubble bg-light p-3 rounded">
-                                        <p class="mb-0">Hello! I'm your AI medical assistant. I can help answer general
-                                            medical questions, provide information about symptoms, medications, and
-                                            appointment scheduling. How can I assist you today?</p>
+                        {% for message in chat_history %}
+                            <div class="d-flex mb-3 {% if message.role == 'user' %}justify-content-end{% else %}justify-content-start{% endif %}">
+                                {% if message.role == 'assistant' %}
+                                    <div class="avatar me-2">
+                                        <i class="fas fa-robot fa-2x text-primary"></i>
                                     </div>
-                                    <small class="text-muted">AI Assistant</small>
+                                {% endif %}
+                                
+                                <div class="{% if message.role == 'user' %}bg-primary text-white{% else %}bg-light{% endif %} p-3 rounded" style="max-width: 80%;">
+                                    {% if message.is_file %}
+                                        <div class="alert alert-info p-2">
+                                            <i class="fas fa-file"></i> {{ message.file_name }}
+                                        </div>
+                                    {% else %}
+                                        {{ message.content }}
+                                    {% endif %}
                                 </div>
+                                
+                                {% if message.role == 'user' %}
+                                    <div class="avatar ms-2">
+                                        <i class="fas fa-user-md fa-2x text-secondary"></i>
+                                    </div>
+                                {% endif %}
                             </div>
-                        </div>
+                        {% endfor %}
                     </div>
 
                     <!-- Chat Input -->
-                    <form id="chat-form" method="POST" class="chat-form"  enctype="multipart/form-data">
+                    <form id="chat-form" method="POST" class="chat-form" enctype="multipart/form-data">
                         {{ form.hidden_tag() }}
                         <div class="input-group">
                             <input type="text" id="message-input" name="message" class="form-control"
@@ -75,185 +84,139 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const chatForm = document.getElementById('chat-form');
-    const chatContainer = document.getElementById('chat-container');
-    const messageInput = document.getElementById('message-input');
-    const fileUpload = document.getElementById('file-upload');
-    const fileNameDisplay = document.getElementById('file-name');
-
-    // Load conversation from localStorage or initialize
-    let conversation = JSON.parse(localStorage.getItem('chatConversation')) || [
-        {
-            role: 'assistant',
-            content: "Hello! I'm your AI medical assistant. How can I help you today?"
-        }
-    ];
-
-    // Display existing conversation
-    function renderConversation() {
-        chatContainer.innerHTML = '';
-        conversation.forEach(msg => {
-            addMessage(msg.content, msg.role === 'user', msg.isFile);
-        });
-    }
-
-    // Show selected file name
-    fileUpload.addEventListener('change', function() {
-        fileNameDisplay.textContent = this.files.length > 0 ? `File: ${this.files[0].name}` : '';
-    });
-
-    function addMessage(content, isUser, isFile = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${isUser ? 'user-message' : 'bot-message'} mb-3`;
-
-        messageDiv.innerHTML = isUser ? `
-            <div class="d-flex justify-content-end">
-                <div class="message-content">
-                    <div class="message-bubble bg-primary text-white p-3 rounded">
-                        ${isFile ? `<p class="mb-1"><i class="fas fa-file-alt"></i> File uploaded:</p>
-                        <p class="mb-0">${content}</p>` : `<p class="mb-0">${content}</p>`}
-                    </div>
-                    <small class="text-muted">You</small>
-                </div>
-                <div class="avatar bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center ms-3" style="width: 40px; height: 40px;">
-                    <i class="fas fa-user"></i>
-                </div>
-            </div>` : `
-            <div class="d-flex">
-                <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-bubble bg-light p-3 rounded">
-                        <p class="mb-0">${content}</p>
-                    </div>
-                    <small class="text-muted">AI Assistant</small>
-                </div>
-            </div>`;
-
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-
-    // Render existing conversation on page load
-    renderConversation();
-
-    chatForm.addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const message = messageInput.value.trim();
-        const file = fileUpload.files[0];
-        const formData = new FormData();
-
-        if (message) formData.append('message', message);
-        if (file) formData.append('file', file);
-
-        if (!message && !file) return;
-
-        // Add user message to local conversation
-        if (file) {
-            conversation.push({
-                role: 'user',
-                content: file.name,
-                isFile: true
-            });
-            if (message) {
-                conversation.push({
-                    role: 'user',
-                    content: message
-                });
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const fileUpload = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const chatContainer = document.getElementById('chat-container');
+        
+        // Handle file upload display
+        fileUpload.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileNameDisplay.textContent = `Selected file: ${this.files[0].name}`;
+            } else {
+                fileNameDisplay.textContent = '';
             }
-        } else {
-            conversation.push({
-                role: 'user',
-                content: message
-            });
-        }
-
-        // Save to localStorage immediately for better UX
-        localStorage.setItem('chatConversation', JSON.stringify(conversation));
-        renderConversation();
-
-        // Clear inputs
-        messageInput.value = '';
-        fileUpload.value = '';
-        fileNameDisplay.textContent = '';
-
-        // Show loading indicator
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'chat-message bot-message mb-3';
-        loadingDiv.innerHTML = `
-        <div class="d-flex">
-            <div class="avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                <i class="fas fa-robot"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-bubble bg-light p-3 rounded">
-                    <p class="mb-0"><i class="fas fa-spinner fa-spin"></i> Analyzing...</p>
-                </div>
-            </div>
-        </div>`;
-        chatContainer.appendChild(loadingDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-
-        try {
-            const response = await fetch('{{ url_for("chatbot") }}', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            });
-
-            const data = await response.json();
-            chatContainer.removeChild(loadingDiv);
-
-            if (!response.ok) throw new Error(data.error || 'Unknown error');
+        });
+        
+        // Handle form submission
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            if (data.response) {
-                // Update conversation with server-side history (in case of multiple devices)
-                if (data.conversation) {
-                    conversation = data.conversation;
-                } else {
-                    conversation.push({
-                        role: 'assistant',
-                        content: data.response
-                    });
+            const formData = new FormData();
+            const message = messageInput.value.trim();
+            const file = fileUpload.files[0];
+            
+            if (!message && !file) {
+                alert('Please enter a message or upload a file');
+                return;
+            }
+            
+            if (message) {
+                formData.append('message', message);
+            }
+            
+            if (file) {
+                formData.append('file', file);
+            }
+            
+            // Add user message to chat
+            if (message) {
+                addMessageToChat('user', message);
+            }
+            if (file) {
+                addMessageToChat('user', `Uploaded file: ${file.name}`, true);
+            }
+            
+            // Clear inputs
+            messageInput.value = '';
+            fileUpload.value = '';
+            fileNameDisplay.textContent = '';
+            
+            // Show loading indicator
+            const loadingId = 'loading-' + Date.now();
+            addMessageToChat('assistant', '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>', false, loadingId);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            fetch("{{ url_for('chatbot_api') }}", {
+    method: 'POST',
+    body: formData,
+    headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+    }
+})
+            .then(response => response.json())
+            .then(data => {
+                const loadingElement = document.getElementById(loadingId);
+                if (loadingElement) {
+                    loadingElement.remove();
                 }
                 
-                localStorage.setItem('chatConversation', JSON.stringify(conversation));
-                renderConversation();
+                if (data.error) {
+                    addMessageToChat('assistant', `<div class="alert alert-danger">${data.error}</div>`);
+                } else {
+                    addMessageToChat('assistant', data.response);
+                }
+
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Remove loading indicator
+                const loadingElement = document.getElementById(loadingId);
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                addMessageToChat('assistant', `<div class="alert alert-danger">An error occurred while processing your request.</div>`);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        });
+        
+        // Function to add message to chat container
+        function addMessageToChat(role, content, isFile = false, id = null) {
+            const messageDiv = document.createElement('div');
+            if (id) {
+                messageDiv.id = id;
+            }
+            messageDiv.className = `d-flex mb-3 ${role === 'user' ? 'justify-content-end' : 'justify-content-start'}`;
+            
+            let messageContent = '';
+            if (isFile) {
+                messageContent = `
+                    <div class="alert alert-info p-2">
+                        <i class="fas fa-file"></i> ${content}
+                    </div>
+                `;
+            } else {
+                messageContent = `
+                    <div class="${role === 'user' ? 'bg-primary text-white' : 'bg-light'} p-3 rounded" style="max-width: 80%;">
+                        ${content}
+                    </div>
+                `;
             }
             
-        } catch (error) {
-            chatContainer.removeChild(loadingDiv);
-            addMessage(`Error: ${error.message || 'Failed to get response'}`, false);
-            console.error('Error:', error);
+            messageDiv.innerHTML = `
+                ${role === 'assistant' ? '<div class="avatar me-2"><i class="fas fa-robot fa-2x text-primary"></i></div>' : ''}
+                ${messageContent}
+                ${role === 'user' ? '<div class="avatar ms-2"><i class="fas fa-user-md fa-2x text-secondary"></i></div>' : ''}
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
     });
-
-    // Add clear conversation button (optional)
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'btn btn-danger mt-3';
-    clearBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Conversation';
-    clearBtn.onclick = function() {
-        if (confirm('Are you sure you want to clear the conversation?')) {
-            conversation = [{
-                role: 'assistant',
-                content: "Hello! I'm your AI medical assistant. How can I help you today?"
-            }];
-            localStorage.setItem('chatConversation', JSON.stringify(conversation));
-            renderConversation();
-        }
-    };
-    document.querySelector('.card-body').appendChild(clearBtn);
-});
 </script>
 
 <style>
     .avatar {
         flex-shrink: 0;
+    }
+    .chat-container {
+        background-color: #f8f9fa;
+    }
+    .bg-light {
+        background-color: #f8f9fa !important;
     }
 </style>
 {% endblock %}

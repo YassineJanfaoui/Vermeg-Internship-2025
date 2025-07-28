@@ -12,7 +12,7 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+app.secret_key = os.environ.get("SESSION_SECRET", "secret")
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -41,8 +41,7 @@ def verify_db_connection():
             if attempt == max_retries - 1:
                 return False
             time.sleep(1)
-            
-# Initialize extensions
+
 db.init_app(app)
 login_manager.init_app(app)
 cancer_service.init_app(app)
